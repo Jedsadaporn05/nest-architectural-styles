@@ -18,7 +18,26 @@ export class ProductsRepository {
     return this.prisma.product.findUnique({ where: { id } });
   }
 
+  findManyByIds(
+    ids: string[],
+    tx: Prisma.TransactionClient = this.prisma,
+  ): Promise<Product[]> {
+    return tx.product.findMany({ where: { id: { in: ids } } });
+  }
+
   update(id: string, data: Prisma.ProductUpdateInput): Promise<Product> {
     return this.prisma.product.update({ where: { id }, data });
+  }
+
+  async decrementStock(
+    id: string,
+    quantity: number,
+    tx: Prisma.TransactionClient = this.prisma,
+  ): Promise<boolean> {
+    const result = await tx.product.updateMany({
+      where: { id, stock: { gte: quantity } },
+      data: { stock: { decrement: quantity } },
+    });
+    return result.count === 1;
   }
 }

@@ -6,11 +6,17 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { Prisma } from '../../generated/prisma/client.js';
+import { InsufficientStockError } from '../errors/insufficient-stock.error.js';
 import { NotFoundError } from '../errors/not-found.error.js';
 
-type HandledError = NotFoundError | Prisma.PrismaClientKnownRequestError;
+type HandledError =
+  NotFoundError | InsufficientStockError | Prisma.PrismaClientKnownRequestError;
 
-@Catch(NotFoundError, Prisma.PrismaClientKnownRequestError)
+@Catch(
+  NotFoundError,
+  InsufficientStockError,
+  Prisma.PrismaClientKnownRequestError,
+)
 export class AppExceptionFilter implements ExceptionFilter {
   catch(exception: HandledError, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
@@ -21,6 +27,9 @@ export class AppExceptionFilter implements ExceptionFilter {
   private toHttp(exception: HandledError): { status: number; message: string } {
     if (exception instanceof NotFoundError) {
       return { status: HttpStatus.NOT_FOUND, message: exception.message };
+    }
+    if (exception instanceof InsufficientStockError) {
+      return { status: HttpStatus.CONFLICT, message: exception.message };
     }
     switch (exception.code) {
       case 'P2002':
